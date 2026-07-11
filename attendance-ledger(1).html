@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#16233F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Attendance">
+<title>Attendance Ledger</title>
+<style>
+  :root{
+    --ink:#16233F;
+    --ink-2:#223257;
+    --paper:#F6F2E9;
+    --paper-line:#E4DCC8;
+    --present:#2E7D5B;
+    --present-soft:#DCEFE4;
+    --absent:#B5432E;
+    --absent-soft:#F5DDD6;
+    --holiday:#8A7A5C;
+    --holiday-soft:#EDE6D3;
+    --gold:#C79A3D;
+    --text:#1E2430;
+    --text-soft:#6B6355;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    background-image:
+      repeating-linear-gradient(transparent, transparent 34px, var(--paper-line) 34px, var(--paper-line) 35px);
+    font-family:'Georgia','Iowan Old Style',serif;
+    color:var(--text);
+    min-height:100vh;
+    padding-bottom:40px;
+  }
+  .sans{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;}
+
+  header{
+    background:var(--ink);
+    color:var(--paper);
+    padding:28px 20px 22px;
+    border-bottom:4px solid var(--gold);
+    position:relative;
+    overflow:hidden;
+  }
+  header::after{
+    content:"";
+    position:absolute; right:-40px; top:-40px;
+    width:140px; height:140px;
+    border:1px solid rgba(246,242,233,0.15);
+    border-radius:50%;
+  }
+  .eyebrow{
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    font-size:11px; letter-spacing:2.5px; text-transform:uppercase;
+    color:var(--gold); font-weight:600; margin:0 0 6px;
+  }
+  h1{margin:0; font-size:26px; font-weight:400; letter-spacing:0.3px;}
+  .today-date{
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    font-size:13px; color:rgba(246,242,233,0.65); margin-top:6px;
+  }
+
+  main{max-width:480px; margin:0 auto; padding:20px 18px;}
+
+  .card{
+    background:var(--paper);
+    border:1px solid var(--paper-line);
+    border-radius:2px;
+    box-shadow:0 1px 0 var(--paper-line), 0 8px 18px -12px rgba(22,35,63,0.35);
+    padding:22px;
+    margin-bottom:18px;
+    position:relative;
+  }
+  .card-label{
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    font-size:10.5px; letter-spacing:2px; text-transform:uppercase;
+    color:var(--text-soft); font-weight:700; margin:0 0 14px;
+  }
+
+  /* Today prompt */
+  .prompt-title{font-size:19px; margin:0 0 18px; line-height:1.4;}
+  .choice-btn{
+    display:flex; align-items:center; gap:12px;
+    width:100%; text-align:left;
+    padding:15px 16px; margin-bottom:10px;
+    border-radius:3px; border:1.5px solid var(--paper-line);
+    background:#fff;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    font-size:15.5px; font-weight:600; color:var(--text);
+    cursor:pointer; transition:transform .12s ease, box-shadow .12s ease;
+  }
+  .choice-btn:active{transform:scale(0.98);}
+  .choice-dot{width:11px; height:11px; border-radius:50%; flex-shrink:0;}
+  .choice-btn.present .choice-dot{background:var(--present);}
+  .choice-btn.absent .choice-dot{background:var(--absent);}
+  .choice-btn.holiday .choice-dot{background:var(--holiday);}
+  .choice-sub{font-size:12px; font-weight:400; color:var(--text-soft); margin-top:2px;}
+
+  .status-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 16px; border-radius:3px; margin-top:2px;
+  }
+  .status-row.present{background:var(--present-soft); color:var(--present);}
+  .status-row.absent{background:var(--absent-soft); color:var(--absent);}
+  .status-row.holiday{background:var(--holiday-soft); color:var(--holiday);}
+  .status-text{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; font-weight:700; font-size:15px;}
+  .change-link{
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    font-size:12.5px; font-weight:600; text-decoration:underline; background:none; border:none;
+    color:inherit; cursor:pointer; padding:0; opacity:0.85;
+  }
+
+  .sunday-note{
+    text-align:center; padding:10px 0 4px; color:var(--text-soft);
+    font-size:14.5px; font-style:italic;
+  }
+
+  /* Stats */
+  .stats-grid{display:flex; align-items:center; gap:20px;}
+  .ring-wrap{position:relative; width:104px; height:104px; flex-shrink:0;}
+  .ring-pct{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    flex-direction:column;
+  }
+  .ring-pct .num{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; font-size:22px; font-weight:800; color:var(--ink);}
+  .ring-pct .lbl{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--text-soft);}
+  .stat-list{flex:1; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;}
+  .stat-line{display:flex; align-items:center; justify-content:space-between; padding:6px 0; border-bottom:1px dashed var(--paper-line); font-size:13.5px;}
+  .stat-line:last-child{border-bottom:none;}
+  .stat-line .k{display:flex; align-items:center; gap:8px; color:var(--text-soft);}
+  .stat-line .k .dot{width:9px; height:9px; border-radius:50%;}
+  .stat-line .v{font-weight:700; color:var(--text);}
+  .low-warning{
+    margin-top:12px; padding:9px 12px; background:var(--absent-soft); color:var(--absent);
+    border-radius:3px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    font-size:12.5px; font-weight:600;
+  }
+
+  /* Calendar */
+  .cal-header{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
+  .cal-month{font-size:17px;}
+  .cal-nav{display:flex; gap:6px;}
+  .cal-nav button{
+    width:30px; height:30px; border-radius:50%; border:1px solid var(--paper-line);
+    background:#fff; color:var(--ink); font-size:15px; cursor:pointer;
+  }
+  .cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:5px; text-align:center;}
+  .cal-dow{
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    font-size:10px; color:var(--text-soft); font-weight:700; padding-bottom:4px;
+  }
+  .cal-day{
+    aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+    border-radius:6px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    font-size:12.5px; font-weight:600; cursor:pointer; position:relative; color:var(--text);
+    border:1px solid transparent;
+  }
+  .cal-day.empty{visibility:hidden; cursor:default;}
+  .cal-day.sunday{color:var(--text-soft); cursor:default;}
+  .cal-day.today{border-color:var(--gold); font-weight:800;}
+  .cal-day.present{background:var(--present-soft); color:var(--present);}
+  .cal-day.absent{background:var(--absent-soft); color:var(--absent);}
+  .cal-day.holiday{background:var(--holiday-soft); color:var(--holiday);}
+  .cal-day.future{opacity:0.35; cursor:default;}
+
+  .legend{
+    display:flex; flex-wrap:wrap; gap:12px; margin-top:14px;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; font-size:11px; color:var(--text-soft);
+  }
+  .legend span{display:inline-flex; align-items:center; gap:5px;}
+  .legend .dot{width:8px; height:8px; border-radius:50%;}
+
+  .edit-sheet{
+    position:fixed; inset:0; background:rgba(22,35,63,0.55);
+    display:none; align-items:flex-end; justify-content:center; z-index:50;
+  }
+  .edit-sheet.open{display:flex;}
+  .edit-panel{
+    background:var(--paper); width:100%; max-width:480px;
+    border-radius:14px 14px 0 0; padding:20px 20px 26px;
+    animation:slideup .18s ease;
+  }
+  @keyframes slideup{from{transform:translateY(20px); opacity:0;} to{transform:translateY(0); opacity:1;}}
+  .edit-panel .card-label{margin-bottom:4px;}
+  .edit-date{font-size:16px; margin:0 0 16px;}
+  .edit-panel .choice-btn{margin-bottom:8px;}
+  .edit-cancel{
+    width:100%; text-align:center; padding:12px; margin-top:4px;
+    background:none; border:none; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    font-size:14px; color:var(--text-soft); cursor:pointer;
+  }
+
+  footer{
+    text-align:center; padding:22px 20px 6px;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    font-size:11.5px; color:var(--text-soft);
+  }
+  footer button{
+    background:none; border:none; color:var(--absent); text-decoration:underline;
+    font-size:11.5px; cursor:pointer; padding:0;
+  }
+
+  /* Auth */
+  .user-bar{
+    display:none; align-items:center; justify-content:space-between; gap:10px;
+    margin-top:10px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  }
+  .user-bar.show{display:flex;}
+  .user-email{font-size:12px; color:rgba(246,242,233,0.75); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .logout-btn{
+    flex-shrink:0; background:rgba(246,242,233,0.12); border:1px solid rgba(246,242,233,0.3);
+    color:var(--paper); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    font-size:11.5px; font-weight:600; padding:6px 12px; border-radius:20px; cursor:pointer;
+  }
+  .auth-wrap{max-width:480px; margin:0 auto; padding:20px 18px;}
+  .auth-input{
+    width:100%; padding:13px 14px; margin-bottom:10px; border-radius:3px;
+    border:1.5px solid var(--paper-line); background:#fff;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    font-size:15px; color:var(--text);
+  }
+  .auth-input:focus{outline:none; border-color:var(--ink);}
+  .auth-error{
+    color:var(--absent); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    font-size:12.5px; font-weight:600; margin:0 0 10px; min-height:1px;
+  }
+  .auth-submit{
+    width:100%; padding:14px; border:none; border-radius:3px; background:var(--ink); color:var(--paper);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    font-size:15px; font-weight:700; cursor:pointer; margin-bottom:10px;
+  }
+  .auth-submit:disabled{opacity:0.6;}
+  .loading-note{
+    text-align:center; padding:40px 18px; color:var(--text-soft);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; font-size:14px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <p class="eyebrow sans">College Attendance</p>
+  <h1 id="headerTitle">Attendance Ledger</h1>
+  <p class="today-date sans" id="todayDate"></p>
+  <div class="user-bar" id="userBar">
+    <span class="user-email sans" id="userEmailLabel"></span>
+    <button class="logout-btn" id="logoutBtn">Log out</button>
+  </div>
+</header>
+
+<div class="auth-wrap" id="authScreen">
+  <div class="card">
+    <p class="card-label" id="authLabel">Sign in</p>
+    <p class="prompt-title" id="authTitle">Welcome back</p>
+    <input type="email" id="authEmail" class="auth-input" placeholder="Email" autocomplete="email">
+    <input type="password" id="authPassword" class="auth-input" placeholder="Password (min 6 characters)" autocomplete="current-password">
+    <p class="auth-error" id="authError"></p>
+    <button class="auth-submit" id="authSubmit">Log in</button>
+    <button class="edit-cancel" id="authToggle">Don't have an account? Sign up</button>
+  </div>
+</div>
+
+<div class="loading-note" id="loadingNote" style="display:none;">Loading your attendance…</div>
+
+<main id="appMain" style="display:none;">
+
+  <div class="card" id="todayCard"></div>
+
+  <div class="card">
+    <p class="card-label">Overall attendance</p>
+    <div class="stats-grid">
+      <div class="ring-wrap">
+        <svg viewBox="0 0 100 100" width="104" height="104">
+          <circle cx="50" cy="50" r="42" fill="none" stroke="#E4DCC8" stroke-width="10"/>
+          <circle id="ringFg" cx="50" cy="50" r="42" fill="none" stroke="#2E7D5B" stroke-width="10"
+                  stroke-linecap="round" transform="rotate(-90 50 50)"/>
+        </svg>
+        <div class="ring-pct">
+          <div class="num" id="pctNum">0%</div>
+          <div class="lbl">present</div>
+        </div>
+      </div>
+      <div class="stat-list">
+        <div class="stat-line"><span class="k"><span class="dot" style="background:var(--present)"></span>Present days</span><span class="v" id="presentCount">0</span></div>
+        <div class="stat-line"><span class="k"><span class="dot" style="background:var(--absent)"></span>Absent days</span><span class="v" id="absentCount">0</span></div>
+        <div class="stat-line"><span class="k"><span class="dot" style="background:var(--holiday)"></span>No-college days</span><span class="v" id="holidayCount">0</span></div>
+      </div>
+    </div>
+    <div class="low-warning" id="lowWarning" style="display:none;"></div>
+  </div>
+
+  <div class="card">
+    <div class="cal-header">
+      <div class="cal-nav"><button id="prevMonth">‹</button></div>
+      <div class="cal-month sans" id="calMonthLabel"></div>
+      <div class="cal-nav"><button id="nextMonth">›</button></div>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--present)"></span>Present</span>
+      <span><span class="dot" style="background:var(--absent)"></span>Absent</span>
+      <span><span class="dot" style="background:var(--holiday)"></span>No college</span>
+      <span><span class="dot" style="background:#ccc"></span>Sunday / unmarked</span>
+    </div>
+  </div>
+
+</main>
+
+<div class="edit-sheet" id="editSheet">
+  <div class="edit-panel">
+    <p class="card-label">Edit entry</p>
+    <p class="edit-date" id="editDateLabel"></p>
+    <button class="choice-btn present" data-status="present"><span class="choice-dot"></span><div><div>Present</div></div></button>
+    <button class="choice-btn absent" data-status="absent"><span class="choice-dot"></span><div><div>Absent</div></div></button>
+    <button class="choice-btn holiday" data-status="holiday"><span class="choice-dot"></span><div><div>No college</div></div></button>
+    <button class="edit-cancel" id="editCancel">Cancel</button>
+  </div>
+</div>
+
+<footer>
+  Each account's attendance is private to that account, stored in your Firebase project. &nbsp;•&nbsp; <button id="resetBtn">Reset all data</button>
+</footer>
+
+<!--
+  ============================================================
+  SETUP REQUIRED — see the setup guide provided alongside this
+  file for full step-by-step instructions. Short version:
+  1. Create a free project at https://console.firebase.google.com
+  2. Build > Authentication > Sign-in method > enable "Email/Password"
+  3. Build > Firestore Database > Create database (production mode)
+  4. Firestore > Rules, paste the rules from the setup guide, Publish
+  5. Project settings > General > Your apps > Web app > copy the
+     firebaseConfig object and paste it below, replacing the
+     placeholder values.
+  ============================================================
+-->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script>
+  // ---- REPLACE with your own Firebase project's config ----
+  var firebaseConfig = {
+    apiKey: "AIzaSyCYEKBjxgfdXRmZQYNZNBnIxEWromruzrc",
+    authDomain: "attendance-tracker-8cfc7.firebaseapp.com",
+    projectId: "attendance-tracker-8cfc7",
+    storageBucket: "attendance-tracker-8cfc7.firebasestorage.app",
+    messagingSenderId: "211471649118",
+    appId: "1:211471649118:web:4989d65c732cb0297a67cf"
+  };
+  firebase.initializeApp(firebaseConfig);
+  var auth = firebase.auth();
+  var db = firebase.firestore();
+</script>
+
+<script>
+(function(){
+
+  // ---- Auth screen wiring ----
+  var authScreen = document.getElementById('authScreen');
+  var appMain = document.getElementById('appMain');
+  var loadingNote = document.getElementById('loadingNote');
+  var userBar = document.getElementById('userBar');
+  var userEmailLabel = document.getElementById('userEmailLabel');
+  var authEmail = document.getElementById('authEmail');
+  var authPassword = document.getElementById('authPassword');
+  var authError = document.getElementById('authError');
+  var authSubmit = document.getElementById('authSubmit');
+  var authToggle = document.getElementById('authToggle');
+  var authTitle = document.getElementById('authTitle');
+  var authLabel = document.getElementById('authLabel');
+  var mode = 'login'; // or 'signup'
+
+  function setMode(m){
+    mode = m;
+    authError.textContent = '';
+    if(mode === 'login'){
+      authLabel.textContent = 'Sign in';
+      authTitle.textContent = 'Welcome back';
+      authSubmit.textContent = 'Log in';
+      authToggle.textContent = "Don't have an account? Sign up";
+    } else {
+      authLabel.textContent = 'Create account';
+      authTitle.textContent = 'Set up your ledger';
+      authSubmit.textContent = 'Sign up';
+      authToggle.textContent = 'Already have an account? Log in';
+    }
+  }
+  authToggle.addEventListener('click', function(){
+    setMode(mode === 'login' ? 'signup' : 'login');
+  });
+
+  function friendlyAuthError(code){
+    var map = {
+      'auth/invalid-email':'That email address looks invalid.',
+      'auth/user-not-found':'No account found with that email.',
+      'auth/wrong-password':'Incorrect password.',
+      'auth/invalid-credential':'Incorrect email or password.',
+      'auth/email-already-in-use':'An account already exists with that email.',
+      'auth/weak-password':'Password should be at least 6 characters.',
+      'auth/network-request-failed':'Network error — check your connection.'
+    };
+    return map[code] || 'Something went wrong. Please try again.';
+  }
+
+  authSubmit.addEventListener('click', function(){
+    var email = authEmail.value.trim();
+    var pw = authPassword.value;
+    authError.textContent = '';
+    if(!email || !pw){
+      authError.textContent = 'Enter both email and password.';
+      return;
+    }
+    authSubmit.disabled = true;
+    var action = mode === 'login'
+      ? auth.signInWithEmailAndPassword(email, pw)
+      : auth.createUserWithEmailAndPassword(email, pw);
+    action.catch(function(err){
+      authError.textContent = friendlyAuthError(err.code);
+    }).finally(function(){
+      authSubmit.disabled = false;
+    });
+  });
+
+  document.getElementById('logoutBtn').addEventListener('click', function(){
+    auth.signOut();
+  });
+
+  // ---- Per-user Firestore storage ----
+  var currentUid = null;
+  var data = {}; // { "2026-07-11": "present" | "absent" | "holiday" }
+
+  function saveData(newData){
+    data = newData;
+    if(!currentUid) return;
+    db.collection('attendance').doc(currentUid).set(data).catch(function(err){
+      console.error('Save failed:', err);
+      alert('Could not save — check your connection and try again.');
+    });
+  }
+
+  auth.onAuthStateChanged(function(user){
+    if(user){
+      currentUid = user.uid;
+      userEmailLabel.textContent = user.email;
+      userBar.classList.add('show');
+      authScreen.style.display = 'none';
+      appMain.style.display = 'none';
+      loadingNote.style.display = 'block';
+      db.collection('attendance').doc(currentUid).get().then(function(docSnap){
+        data = docSnap.exists ? docSnap.data() : {};
+        loadingNote.style.display = 'none';
+        appMain.style.display = 'block';
+        renderAll();
+      }).catch(function(err){
+        console.error('Load failed:', err);
+        loadingNote.textContent = 'Could not load your data — check your connection and reload.';
+      });
+    } else {
+      currentUid = null;
+      data = {};
+      userBar.classList.remove('show');
+      appMain.style.display = 'none';
+      loadingNote.style.display = 'none';
+      authScreen.style.display = 'block';
+      authEmail.value = '';
+      authPassword.value = '';
+    }
+  });
+
+  function fmtKey(d){
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  function isSunday(d){ return d.getDay() === 0; }
+  function startOfDay(d){ var n = new Date(d); n.setHours(0,0,0,0); return n; }
+
+  var today = startOfDay(new Date());
+  var todayKey = fmtKey(today);
+
+  var DOW_LONG = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  document.getElementById('todayDate').textContent =
+    DOW_LONG[today.getDay()] + ', ' + today.getDate() + ' ' + MONTHS[today.getMonth()] + ' ' + today.getFullYear();
+
+  // ---- Today card ----
+  function renderTodayCard(){
+    var card = document.getElementById('todayCard');
+    card.innerHTML = '';
+
+    if(isSunday(today)){
+      card.innerHTML =
+        '<p class="card-label">Today</p>' +
+        '<p class="sunday-note">🌤️ It\'s Sunday — no attendance to mark.</p>';
+      return;
+    }
+
+    var existing = data[todayKey];
+
+    if(existing){
+      var labelMap = {present:'Marked Present', absent:'Marked Absent', holiday:'Marked No College'};
+      var html = '<p class="card-label">Today</p>' +
+        '<div class="status-row ' + existing + '">' +
+          '<span class="status-text">' + labelMap[existing] + '</span>' +
+          '<button class="change-link" id="changeToday">Change</button>' +
+        '</div>';
+      card.innerHTML = html;
+      document.getElementById('changeToday').addEventListener('click', function(){
+        renderTodayChoices();
+      });
+      return;
+    }
+
+    renderTodayChoices();
+
+    function renderTodayChoices(){
+      card.innerHTML =
+        '<p class="card-label">Today</p>' +
+        '<p class="prompt-title">Did you go to college today?</p>' +
+        '<button class="choice-btn present" data-status="present"><span class="choice-dot"></span><div>Present<div class="choice-sub">I attended college</div></div></button>' +
+        '<button class="choice-btn absent" data-status="absent"><span class="choice-dot"></span><div>Absent<div class="choice-sub">I missed college</div></div></button>' +
+        '<button class="choice-btn holiday" data-status="holiday"><span class="choice-dot"></span><div>No college<div class="choice-sub">Holiday — doesn\'t affect %</div></div></button>';
+      card.querySelectorAll('.choice-btn').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          data[todayKey] = btn.getAttribute('data-status');
+          saveData(data);
+          renderAll();
+        });
+      });
+    }
+  }
+
+  // ---- Stats ----
+  function renderStats(){
+    var present = 0, absent = 0, holiday = 0;
+    Object.keys(data).forEach(function(k){
+      var v = data[k];
+      if(v === 'present') present++;
+      else if(v === 'absent') absent++;
+      else if(v === 'holiday') holiday++;
+    });
+    var denom = present + absent;
+    var pct = denom > 0 ? Math.round((present/denom)*100) : 0;
+
+    document.getElementById('presentCount').textContent = present;
+    document.getElementById('absentCount').textContent = absent;
+    document.getElementById('holidayCount').textContent = holiday;
+    document.getElementById('pctNum').textContent = pct + '%';
+
+    var ring = document.getElementById('ringFg');
+    var circumference = 2 * Math.PI * 42;
+    var offset = circumference - (pct/100) * circumference;
+    ring.style.strokeDasharray = circumference;
+    ring.style.strokeDashoffset = offset;
+    ring.style.stroke = pct >= 75 ? '#2E7D5B' : (pct >= 60 ? '#C79A3D' : '#B5432E');
+
+    var warn = document.getElementById('lowWarning');
+    if(denom > 0 && pct < 75){
+      warn.style.display = 'block';
+      warn.textContent = '⚠ Below 75% — you may need extra present days to recover.';
+    } else {
+      warn.style.display = 'none';
+    }
+  }
+
+  // ---- Calendar ----
+  var calDate = new Date(today.getFullYear(), today.getMonth(), 1);
+
+  function renderCalendar(){
+    var year = calDate.getFullYear(), month = calDate.getMonth();
+    document.getElementById('calMonthLabel').textContent = MONTHS[month] + ' ' + year;
+
+    var grid = document.getElementById('calGrid');
+    grid.innerHTML = '';
+    ['S','M','T','W','T','F','S'].forEach(function(d){
+      var el = document.createElement('div');
+      el.className = 'cal-dow';
+      el.textContent = d;
+      grid.appendChild(el);
+    });
+
+    var firstDow = new Date(year, month, 1).getDay();
+    var daysInMonth = new Date(year, month+1, 0).getDate();
+
+    for(var i=0;i<firstDow;i++){
+      var empty = document.createElement('div');
+      empty.className = 'cal-day empty';
+      grid.appendChild(empty);
+    }
+
+    for(var day=1; day<=daysInMonth; day++){
+      var d = new Date(year, month, day);
+      var key = fmtKey(d);
+      var el = document.createElement('div');
+      el.className = 'cal-day';
+      el.textContent = day;
+
+      var sunday = isSunday(d);
+      var future = startOfDay(d) > today;
+      var status = data[key];
+
+      if(status) el.classList.add(status);
+      else if(sunday) el.classList.add('sunday');
+      if(fmtKey(d) === todayKey) el.classList.add('today');
+      if(future) el.classList.add('future');
+
+      if(!sunday && !future){
+        el.addEventListener('click', function(dd, kk){
+          return function(){ openEditSheet(dd, kk); };
+        }(d, key));
+      }
+      grid.appendChild(el);
+    }
+  }
+
+  document.getElementById('prevMonth').addEventListener('click', function(){
+    calDate = new Date(calDate.getFullYear(), calDate.getMonth()-1, 1);
+    renderCalendar();
+  });
+  document.getElementById('nextMonth').addEventListener('click', function(){
+    var next = new Date(calDate.getFullYear(), calDate.getMonth()+1, 1);
+    if(next <= new Date(today.getFullYear(), today.getMonth(), 1)){
+      calDate = next;
+      renderCalendar();
+    }
+  });
+
+  // ---- Edit sheet ----
+  var editSheet = document.getElementById('editSheet');
+  var editKey = null;
+
+  function openEditSheet(d, key){
+    editKey = key;
+    document.getElementById('editDateLabel').textContent =
+      DOW_LONG[d.getDay()] + ', ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+    editSheet.classList.add('open');
+  }
+  document.getElementById('editCancel').addEventListener('click', function(){
+    editSheet.classList.remove('open');
+  });
+  editSheet.addEventListener('click', function(e){
+    if(e.target === editSheet) editSheet.classList.remove('open');
+  });
+  editSheet.querySelectorAll('.choice-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      data[editKey] = btn.getAttribute('data-status');
+      saveData(data);
+      editSheet.classList.remove('open');
+      renderAll();
+    });
+  });
+
+  // ---- Reset ----
+  document.getElementById('resetBtn').addEventListener('click', function(){
+    if(confirm('This will permanently delete all recorded attendance for your account. Continue?')){
+      saveData({});
+      renderAll();
+    }
+  });
+
+  function renderAll(){
+    renderTodayCard();
+    renderStats();
+    renderCalendar();
+  }
+
+  renderAll();
+})();
+</script>
+
+</body>
+</html>
